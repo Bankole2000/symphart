@@ -1,0 +1,167 @@
+STEP: Create project
+  > composer create-project symfony/skeleton:"^4.4" symphart
+
+STEP: Setup virtual HOST
+ edit FILE: C:\xampp\apache\conf\extra\httpd-vhosts.conf
+<VirtualHost *:80>
+    DocumentRoot "C:/xampp/htdocs/projects/symfony/symphart/public"
+    ServerName symphart.test
+</VirtualHost>
+
+  edit FILE: C:\Windows\System32\drivers\etc\hosts - add
+127.0.0.1 symphart.test
+
+STEP: add FILE: .htaccess in FOLDER: public 
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Determine the RewriteBase automatically and set it as environment variable
+  RewriteCond %{REQUEST_URI}::$1 ^(/.+)/(.*)::\2$
+  RewriteRule ^(.*) - [E=BASE:%1]
+
+  # if the requested filename exists, simply serve it. 
+  # We only want to let Apache serve files and not directories. 
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule .? - [L]
+  
+  # Rewrite all other queries to the front controller. 
+  RewriteRule .? %{ENV:BASE}/index.php [L]
+</IfModule>
+
+STEP: Create FILE: ArticleController in FOLDER: src\controller
+
+STEP: Setup routes
+  OPTIONAL: option 1: use FILE: routes.yaml file in FOLDER: config
+  index:
+  path: /
+  controller: App\Controller\ArticleController::index
+  or 
+  PREFERED: option 2: install annotations package 
+  >composer require annotations
+
+STEP: Setup templates
+  > composer require twig
+
+STEP: Add 3rd party css and js in FOLDER: templates FILE: base.html.twig
+  Use cdn links
+
+STEP: Extend basehtml in custom templates 
+  {% extends 'base.html.twig' %}
+  {% block body %}body content here {% endblock %}
+  {% block title %}Custom Title here {% endblock %}
+  {% if variable %}{% else %}{% endif %}
+  {% for item in array/object %}{% endfor %}
+STEP: Create FOLDER: includes in FOLDER: templates for common html partials
+  e.g. navbar.html.twig or footer.html.twig
+  to include the file in the base twig file we code
+  {{ include('includes\file.html.twig') }}
+
+STEP: we can add variables to the FILE: controller.php to pass on to the FILE: template.html.twig
+  we pass in variables/objects as an array as second argument to the render method. i.e.
+  return $this->render('articles/index.html.twig', array('name' => 'Bankole', 'prop2' => $variable ));
+
+STEP: install and setup doctrine 
+  >  composer require symfony/orm-pack
+  >  composer require --dev symfony/maker-bundle 
+  OPTIONAL: alternatively you can run 
+  > composer require doctrine maker 
+  Once installed edit the FILE: .env to include db details
+  DATABASE_URL=mysql://db_user:db_password@127.0.0.1:3306/db_name?serverVersion=5.7
+
+STEP: you can create the database from the command line
+  > php bin/console doctrine:database:create
+
+STEP: Create Model/Entity for resource
+  > php bin/console make:entity Resourcename
+  This will created an FOLDER: Entity with a FILE: Resourcename.php
+  with the orm and fields and getters and setters etc.
+
+STEP: Create the Schema then run the migration
+  > php bin/console doctrine:migrations:diff
+  > php bin/console doctrine:migrations:migrate 
+  This should create the table in the db specified in the .env file
+
+STEP: Try testing the db by adding to it from the controller. 
+  note; include the Resource entity file at the top of the controller file;
+  use App\Entity\Resourcename;
+    /**
+     * @Route("/article/save")
+     * @Method({"GET"})
+     */
+    public function save() {
+      $entityManager = $this->getDoctrine()->getManager();
+
+      $article = new Article();
+      $article->setTitle('Article Two');
+      $article->setBody('Another Article added to the collection');
+
+      $entityManager->persist($article);
+
+      $entityManager->flush();
+
+      return new Response('Saved an article with the id of '.$article->getId());
+    }
+  
+STEP: you can check the db from the console
+  > php bin/console doctrine:query:sql "SELECT * FROM article"
+  query to fetch all data from a table in console
+
+STEP: fetch data in controller 
+  $articles = $this->getDoctrine()->getRepository(Article::class)->findAll();
+  above query fetches all articles from db to pass into render method;
+
+STEP: install form module with composer
+  > composer require form 
+
+STEP: include the form module in the controller 
+  use Symfony\Component\Form\Extension\Core\Type\TextType;
+  use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+  use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+  above uses form module for different types of input fields
+
+STEP: include the Request module to handle http requests;
+  use Symfony\Component\Routing\Annotation\Route;
+  
+STEP: Creating form in controller 
+    /**
+     * @Route("/article/new", name="new_article")
+     * @Method({"GET", "POST"})
+     */
+    public function new(Request $request) {
+      $article = new Article();
+      $form = $this->createFormBuilder($article)
+      ->add('title', TextType::class, array('attr' => array('class' => 'form-control')))
+      ->add('body', TextareaType::class, array('required' => false, 'attr' => array('class' => 'form-control')))
+      ->add('save', SubmitType::class, array('label' => 'Create', 'attr' => array('class' => 'btn btn-primary mt-3')))
+      ->getForm();
+      return $this->render('articles/new.html.twig', array('form' => $form->createView()));
+    }
+  // This creates form on the route specified and passes it to the template
+
+STEP: inserting the form in the template 
+  {% block body %}
+    {{ form_start(form) }} // creates opening form tag
+    {{ form_widget(form) }} // renders the form elements
+    {{ form_end(form) }}  // closing form tag
+  {% endblock %}
+
+STEP: Handling form submissions
+  Note: by default the form submits to the same route therefore
+  in the same route function we add the code below
+
+  $form->handleRequest($request);
+  if($form->isSubmitted() && $form->isValid()) {
+    $article = $form->getData();
+
+    $entityManager = $this->getDoctrine()->getManager();
+    $entityManager->persist($article);
+    $entityManager->flush();
+
+    return $this->redirectToRoute('article_list'); // Redirect to route name
+  }
+
+STEP: adding local js and css 
+  create js or css folder in FOLDER: public and add files there
+  to add js or css to specific file use the 
+  {% block javascripts %}<script src="/path/to/js"></script>{% block %}  
+  in FILE: base.html.twig for all pages or 
+  in FILE: template.html.twig for specific page
