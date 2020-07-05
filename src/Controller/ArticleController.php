@@ -52,6 +52,16 @@
     }
 
     /**
+     * @Route("/article/{id}", name="show_article")
+     * @Method({"GET"})
+     */
+    public function show(Request $request, $id) {
+      $article = new Article();
+      $article = $this->getDoctrine()->getRepository(Article::class)->find($id);
+      return $this->render('articles/show.html.twig', array('article' => $article));
+    }
+
+    /**
      * @Route("/article/edit/{id}", name="edit_article")
      * @Method({"GET", "POST"})
      */
@@ -76,15 +86,6 @@
       }
 
       return $this->render('articles/edit.html.twig', array('form' => $form->createView()));
-    }
-
-    /**
-     * @Route("/article/{id}", name="article_show")
-     * @Method({"GET"})
-     */
-    public function show($id) {
-      $article = $this->getDoctrine()->getRepository(Article::class)->find($id);
-      return $this->render('articles/show.html.twig', array('article' => $article));
     }
 
     /**
